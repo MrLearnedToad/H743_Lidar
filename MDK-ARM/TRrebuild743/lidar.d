@@ -40,3 +40,6 @@ trrebuild743\lidar.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim.h
 trrebuild743\lidar.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_tim_ex.h
 trrebuild743\lidar.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_uart.h
 trrebuild743\lidar.o: ../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_uart_ex.h
+trrebuild743\lidar.o: ../Drivers/CMSIS/DSP/Include/arm_math.h
+trrebuild743\lidar.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+trrebuild743\lidar.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\float.h

@@ -58,8 +58,8 @@ float last_pos_x=0,last_pos_y=0;
 uint8_t rxtemp=0;
 int rocker[4];
 uint8_t turret_buffer[8];
-uint8_t dma_buffer[4200]={0};
-uint8_t raw_data_buffer[4200]={0};
+uint8_t dma_buffer[3000]={0};
+uint8_t raw_data_buffer[3000]={0};
 uint8_t raw_data_flag=0;
 uint8_t tof_buffer[10]={0};
 short tof_read;
@@ -157,15 +157,8 @@ int main(void)
     RGB_Init(&htim8,TIM_CHANNEL_3);
 	
 	lidar_cmd_buf[0]=0xA5;
-	lidar_cmd_buf[1]=0x82;
-	lidar_cmd_buf[2]=0x05;
-	lidar_cmd_buf[3]=0;
-	lidar_cmd_buf[4]=0;
-	lidar_cmd_buf[5]=0;
-	lidar_cmd_buf[6]=0;
-	lidar_cmd_buf[7]=0;
-	lidar_cmd_buf[8]=0x22;
-	HAL_UART_Transmit(&huart3,lidar_cmd_buf,9,10);
+	lidar_cmd_buf[1]=0x20;
+	HAL_UART_Transmit(&huart3,lidar_cmd_buf,2,10);
 
 	
 	RGB_DEFAULT[0]=50;
@@ -372,8 +365,17 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	if(lidar_init_flag==0)
 	{
 		lidar_init_flag=1;
-		HAL_UART_Receive_DMA(&huart3,dma_buffer,4200);
+		HAL_UART_Receive_DMA(&huart3,dma_buffer,3000);
 		return;
+	}
+	else
+	{
+		if(dma_buffer[0]&0x01)
+		{
+			lidar_buffer_switcher=!lidar_buffer_switcher;
+			HAL_UART_Receive_DMA(&huart3,dma_buffer,3000);
+		}
+		
 	}
 }
 
@@ -413,9 +415,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	{
 		if(raw_data_flag==1)
 		{
-			for(int i=0;i<50;i++)
+			for(int i=0;i<600;i++)
 			{
-				data_update(raw_data_buffer+i*84);
+				data_update(raw_data_buffer+i*5);
 				raw_data_flag=0;
 			}
 		}
@@ -430,10 +432,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
         speed_clock++;
          if(speed_clock==10)
 		 {
-			if(ababab(cmp_buf,&dma_buffer[4195]))
+			if(ababab(cmp_buf,&dma_buffer[2995]))
 			{
-				memcpy(cmp_buf,&dma_buffer[4195],5);
-				memcpy(raw_data_buffer,dma_buffer,4200);
+				memcpy(cmp_buf,&dma_buffer[2995],5);
+				memcpy(raw_data_buffer,dma_buffer,3000);
 				raw_data_flag=1;
 			}
             speed_clock=0;
