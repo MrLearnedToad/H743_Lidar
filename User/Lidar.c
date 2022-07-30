@@ -26,15 +26,30 @@ Point2f BOHH[4];
 
 void data_update(uint8_t *raw_data)
 {
-	if((raw_data[0]&0x01)==1)
+	static uint16_t angle_last;
+	uint16_t angle;
+	angle=((raw_data[3]&0x7f)<<8)|raw_data[2];
+	
+	if(angle_last>angle)
 	{
 		Get_BOHH_Coordinate(nodes,lidar_buffer_pointer,BOHH);
 		lidar_buffer_switcher=!lidar_buffer_switcher;
 		lidar_buffer_pointer=0;
 	}
-	nodes[lidar_buffer_pointer].angle_z_q14=(((raw_data[1]>>1)|(raw_data[2]<<7))<<8);
-	nodes[lidar_buffer_pointer].dist_mm_q2=((raw_data[4]<<8)|raw_data[3]);
-	lidar_buffer_pointer++;
+	int offset=angle-angle_last;
+	if(offset<0)
+		offset+=360*64;
+	debug=raw_data[3]&0x80;
+	for(int i=0;i<40;i++)
+	{
+		nodes[lidar_buffer_pointer].angle_z_q14=angle+offset/40*i;
+		if(nodes[lidar_buffer_pointer].angle_z_q14>360*64)
+			nodes[lidar_buffer_pointer].angle_z_q14-=360*64;
+		//nodes[lidar_buffer_pointer].angle_z_q14/=64;
+		nodes[lidar_buffer_pointer].dist_mm_q2=(raw_data[4+i*2+1]<<8)|(raw_data[4+i*2]);
+		lidar_buffer_pointer++;
+	}
+	angle_last=angle;
 	return;
 }
 
@@ -65,8 +80,8 @@ void Get_BOHH_Coordinate(sl_lidar_response_measurement_node_hq_t *Nodes, size_t 
     for(int i=0; i<NodeCount; i++)
     {
         // 获取该点的角度和距离
-        float angle_in_degrees = Nodes[i].angle_z_q14  / 16384;
-        float distance_in_meters = Nodes[i].dist_mm_q2 / 1000.f / (1 << 2);
+        float angle_in_degrees = Nodes[i].angle_z_q14  / 64;
+        float distance_in_meters = Nodes[i].dist_mm_q2 / 1000.f;
 
         // 太近的点会有问题抛弃
         if(fabs(distance_in_meters) < 0.05f) continue;
