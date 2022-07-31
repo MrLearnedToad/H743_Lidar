@@ -23,7 +23,14 @@ typedef struct Point2f
 	int points;
 }Point2f;
 
-
+typedef struct chassis_info
+{
+	int chassis_coordinate_x;
+	int chassis_coordinate_y;
+	int chassis_coordinate_z;
+	int turret_angle;
+	int turret_dist;
+}chassis_info;
 
 /**
  * @brief 根据雷达扫描的信息计算出四个头顶球的世界坐标
@@ -48,6 +55,7 @@ extern sl_lidar_response_measurement_node_hq_t nodes[8192];
 extern uint8_t lidar_init_flag;
 extern int lidar_buffer_pointer;
 extern uint8_t lidar_buffer_switcher;
+extern Point2f BOHH[4];
 
 void data_update(uint8_t *raw_data);
 

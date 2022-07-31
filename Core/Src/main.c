@@ -65,7 +65,7 @@ uint8_t tof_buffer[10]={0};
 short tof_read;
 uint8_t Rx_buffer[16]={0};
 uint8_t huart3_rxbuffer[16]={0};
-
+uint8_t R1_buf[16]={0};
 int global_clock;
 int speed_clock;
 uint32_t speed_timer=0;
@@ -151,7 +151,6 @@ int main(void)
 	HAL_Delay(400);
     HAL_UART_Receive_IT(&huart3,dma_buffer,7);
     
-    HAL_UART_Receive_DMA(&huart2,tof_buffer,10);
     
     RGB_DEFAULT[0]=0;
     RGB_Color(&htim8,TIM_CHANNEL_3,RGB_DEFAULT,0.2f);
@@ -167,8 +166,8 @@ int main(void)
 	lidar_cmd_buf[7]=0;
 	lidar_cmd_buf[8]=0x22;
 	HAL_UART_Transmit(&huart3,lidar_cmd_buf,9,10);
-
 	
+	//HAL_UART_Receive_IT(&huart2,R1_buf,16);
 	
 	
     HAL_TIM_Base_Start_IT(&htim6);
@@ -369,7 +368,7 @@ void tof_recieve()
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	
-	if(lidar_init_flag==0)
+	if(lidar_init_flag==0&&huart==&huart3)
 	{
 		lidar_init_flag=1;
 		HAL_UART_Receive_DMA(&huart3,dma_buffer,4200);
@@ -377,6 +376,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		RGB_Color(&htim8,TIM_CHANNEL_3,RGB_DEFAULT,0.2f);
 		return;
 	}
+	
 }
 
 uint8_t cmp_buf[5]={0};
@@ -393,8 +393,17 @@ uint8_t ababab(uint8_t *src,uint8_t *dest)
 	return 0;
 }
 
+void msg_transfer(float angle,float dist,int id)
+{
+	int intangle=angle*1000,intdist=dist;
+	uint8_t msg_buf[8];
+	memcpy(msg_buf,&intangle,4);
+	memcpy(msg_buf,&intdist,4);
+	FDCAN_SendData(&hfdcan1,msg_buf,0x114+id,8);
+}
+
 /* USER CODE END 4 */
-extern int debug;
+
 /**
   * @brief  Period elapsed callback in non blocking mode
   * @note   This function is called  when TIM14 interrupt took place, inside
@@ -421,6 +430,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 				raw_data_flag=0;
 			}
 		}
+		else
+		{
+			uint8_t buffer[16]={0};
+			float angle,dist;
+			for(int i=0;i<4;i++)
+			{
+				Tran_XY_To_Angle_Distance(BOHH[i],&angle,&dist);
+				msg_transfer(angle,dist,i);
+			}
+		}
 	}
 	else if(htim->Instance == TIM7)
 	{
@@ -434,7 +453,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		 {
 			if(ababab(cmp_buf,&dma_buffer[4195]))
 			{
-				debug=dma_buffer[3]&0x80;
+				
 				memcpy(cmp_buf,&dma_buffer[4195],5);
 				memcpy(raw_data_buffer,dma_buffer,4200);
 				raw_data_flag=1;
