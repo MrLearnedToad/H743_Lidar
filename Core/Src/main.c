@@ -71,11 +71,11 @@ int speed_clock;
 uint32_t speed_timer=0;
 float vx[10],vy[10],ababa;
 uint8_t pos_reset=0;
-
+uint8_t error=0;
 uint8_t block_color=0;
 uint8_t communciation_error_counter=0;
 extern uint8_t get_block_flag;
-
+uint8_t last;
 //int package_recieve=0,package_valid=0;
 //int start_nbr=0;
     
@@ -137,10 +137,10 @@ int main(void)
   /* USER CODE BEGIN 2 */
 	uint8_t lidar_cmd_buf[9];
 	
-	
+	last=0xA5;
     HAL_Delay(20);
     FDCAN1_Init(&hfdcan1);
-    HAL_Delay(200);
+    HAL_Delay(2000);
     HAL_TIM_Base_Start_IT(&htim7);
     HAL_Delay(200);
     FDCAN2_Init(&hfdcan2);
@@ -148,9 +148,9 @@ int main(void)
 	lidar_cmd_buf[0]=0xA5;
 	lidar_cmd_buf[1]=0x25;
 	HAL_UART_Transmit(&huart3,lidar_cmd_buf,2,10);
-	HAL_Delay(400);
-    HAL_UART_Receive_IT(&huart3,dma_buffer,7);
+	HAL_Delay(1400);
     
+    MX_USART3_UART_Init();
     
     RGB_DEFAULT[0]=0;
     RGB_Color(&htim8,TIM_CHANNEL_3,RGB_DEFAULT,0.2f);
@@ -166,7 +166,7 @@ int main(void)
 	lidar_cmd_buf[7]=0;
 	lidar_cmd_buf[8]=0x22;
 	HAL_UART_Transmit(&huart3,lidar_cmd_buf,9,10);
-	
+	HAL_UART_Receive_IT(&huart3,dma_buffer,7);
 	//HAL_UART_Receive_IT(&huart2,R1_buf,16);
 	
 	
@@ -395,10 +395,10 @@ uint8_t ababab(uint8_t *src,uint8_t *dest)
 
 void msg_transfer(float angle,float dist,int id)
 {
-	int intangle=angle*1000,intdist=dist;
+	int intangle=(angle*1000.0f),intdist=(dist*1000.0f);
 	uint8_t msg_buf[8];
 	memcpy(msg_buf,&intangle,4);
-	memcpy(msg_buf,&intdist,4);
+	memcpy(msg_buf+4,&intdist,4);
 	FDCAN_SendData(&hfdcan1,msg_buf,0x114+id,8);
 }
 
@@ -430,15 +430,24 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 				raw_data_flag=0;
 			}
 		}
-		else
+		else if(error!=1)
 		{
-			uint8_t buffer[16]={0};
+			
 			float angle,dist;
-			for(int i=0;i<4;i++)
-			{
-				Tran_XY_To_Angle_Distance(BOHH[i],&angle,&dist);
-				msg_transfer(angle,dist,i);
-			}
+			
+			Tran_XY_To_Angle_Distance(BOHH[3],&angle,&dist);
+			if(angle!=-190)
+				msg_transfer(angle,dist,0);
+			Tran_XY_To_Angle_Distance(BOHH[2],&angle,&dist);
+			if(angle!=-190)
+				msg_transfer(angle,dist,1);
+			Tran_XY_To_Angle_Distance(BOHH[0],&angle,&dist);
+			if(angle!=-190)
+				msg_transfer(angle,dist,2);
+			Tran_XY_To_Angle_Distance(BOHH[1],&angle,&dist);
+			if(angle!=-190)
+				msg_transfer(angle,dist,3);
+			
 		}
 	}
 	else if(htim->Instance == TIM7)
@@ -449,11 +458,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 //			HAL_UART_Receive_IT(&huart3,dma_buffer,5);
 //		}
         speed_clock++;
+		
+		
          if(speed_clock==2)
 		 {
 			if(ababab(cmp_buf,&dma_buffer[4195]))
 			{
-				
+				if(dma_buffer[0]>>4!=0xA)
+					error=1;
 				memcpy(cmp_buf,&dma_buffer[4195],5);
 				memcpy(raw_data_buffer,dma_buffer,4200);
 				raw_data_flag=1;

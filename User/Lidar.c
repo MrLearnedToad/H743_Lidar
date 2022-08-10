@@ -34,6 +34,7 @@ void data_update(uint8_t *raw_data)
 	{
 		Get_BOHH_Coordinate(nodes,lidar_buffer_pointer,BOHH);
 		lidar_buffer_switcher=!lidar_buffer_switcher;
+		debug=lidar_buffer_pointer;
 		lidar_buffer_pointer=0;
 	}
 	int offset=angle-angle_last;
@@ -90,8 +91,8 @@ void Get_BOHH_Coordinate(sl_lidar_response_measurement_node_hq_t *Nodes, size_t 
         float angle_in_radians = angle_in_degrees * Pi/180.0000f;
 
         // 换算到雷达xy坐标系
-        float point_lidar_x = -cos(angle_in_radians)*distance_in_meters;
-        float point_lidar_y = -sin(-angle_in_radians)*distance_in_meters;
+        float point_lidar_x = cos(angle_in_radians)*distance_in_meters;
+        float point_lidar_y = sin(-angle_in_radians)*distance_in_meters;
         
         // 换算到世界xy坐标系
         float point_world_x = point_lidar_x*cos(Lidar_A) - point_lidar_y*sin(Lidar_A);
@@ -182,13 +183,20 @@ void Tran_XY_To_Angle_Distance(Point2f BOHH_Coordinate, float *Angle, float *Dis
     // 先从世界xy坐标转到雷达xy坐标
     float res_x = BOHH_Coordinate.x - Lidar_X;
     float res_y = BOHH_Coordinate.y - Lidar_Y;
-
+	
     float point_lidar_x = res_x*cos(Lidar_A) + res_y*sin(Lidar_A);
     float point_lidar_y = res_x*sin(-Lidar_A) + res_y*cos(Lidar_A);
-
+	
+	if(BOHH_Coordinate.x==0&&BOHH_Coordinate.y==0)
+	{
+		*Angle=-190;
+		*Distance=-190;
+		return;
+	}
+	
     // 从雷达xy坐标平移到云台xy坐标
-    float point_shooter_x = point_lidar_x - 0.329f;
-    float point_shooter_y = point_lidar_y - 0.000f;
+    float point_shooter_x = point_lidar_x + 65.18f*1e-3;
+    float point_shooter_y = point_lidar_y - 286.36f*1e-3;
 
     // 从云台xy坐标计算到电控需要的角度和距离
     *Angle = atan2(point_shooter_y, point_shooter_x);
